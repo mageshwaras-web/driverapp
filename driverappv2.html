@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Console - Live Tracker</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .driver-card {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin-bottom: 25px;
+      font-size: 24px;
+    }
+
+    .status-container {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      background-color: #ccc;
+      border-radius: 50%;
+    }
+
+    .pulse-dot.active {
+      background-color: #ea4335;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.5; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    select {
+      width: 100%;
+      padding: 15px;
+      border-radius: 10px;
+      border: 2px solid #dfe1e5;
+      font-size: 16px;
+      margin-bottom: 20px;
+      appearance: none;
+      background: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 15px center/15px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 10px;
+    }
+
+    .btn-start {
+      background-color: #34a853;
+      color: white;
+    }
+
+    .btn-start:active { transform: scale(0.98); }
+
+    .btn-stop {
+      background-color: white;
+      color: #ea4335;
+      border: 2px solid #ea4335;
+      display: none;
+    }
+
+    #coord-info {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #5f6368;
+    }
+  </style>
+</head>
+<body>
+
+<div class="driver-card">
+  <h2>Bus Driver Console</h2>
+  
+  <div class="status-container">
+    <div id="dot" class="pulse-dot"></div>
+    <span id="status-text" style="font-weight: 500; color: #5f6368;">System Offline</span>
+  </div>
+
+  <select id="bus">
+    <option value="Bus1">Bus 01 - Karapakkam</option>
+    <option value="Bus2">Bus 02 - Airport Exp</option>
+    <option value="Bus3">Bus 03 - University</option>
+  </select>
+
+  <button id="startBtn" class="btn btn-start" onclick="toggleTracking()">Start Live Transmission</button>
+  <button id="stopBtn" class="btn btn-stop" onclick="toggleTracking()">Stop Transmission</button>
+
+  <div id="coord-info">Select your bus and press start.</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAhhfTPO4tDvrDrdy9D4Af8c-fHwXiTsGM",
+  authDomain: "bustracker-caecf.firebaseapp.com",
+  databaseURL: "https://bustracker-caecf-default-rtdb.firebaseio.com",
+  projectId: "bustracker-caecf",
+  storageBucket: "bustracker-caecf.firebasestorage.app",
+  messagingSenderId: "559342508116",
+  appId: "1:559342508116:web:d85a945f580c51ea8e75c1"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let watchId = null;
+
+function toggleTracking() {
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const dot = document.getElementById("dot");
+  const statusText = document.getElementById("status-text");
+  const busSelect = document.getElementById("bus");
+
+  if (watchId === null) {
+    // START TRACKING
+    const bus = busSelect.value;
+    busSelect.disabled = true;
+    
+    watchId = navigator.geolocation.watchPosition(
+      pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        db.ref("busdata/" + bus).set({
+          lat: lat,
+          lng: lng,
+          updated: new Date().toLocaleTimeString()
+        });
+
+        document.getElementById("coord-info").innerHTML = 
+          `📡 Sending Data...<br>Lat: ${lat.toFixed(5)} | Lng: ${lng.toFixed(5)}`;
+      },
+      err => {
+        alert("Location error: " + err.message);
+        stopTracking();
+      },
+      { enableHighAccuracy: true }
+    );
+
+    startBtn.style.display = "none";
+    stopBtn.style.display = "block";
+    dot.classList.add("active");
+    statusText.innerText = "LIVE ON AIR";
+    statusText.style.color = "#ea4335";
+  } else {
+    // STOP TRACKING
+    stopTracking();
+  }
+}
+
+function stopTracking() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  
+  document.getElementById("bus").disabled = false;
+  document.getElementById("startBtn").style.display = "block";
+  document.getElementById("stopBtn").style.display = "none";
+  document.getElementById("dot").classList.remove("active");
+  document.getElementById("status-text").innerText = "System Offline";
+  document.getElementById("status-text").style.color = "#5f6368";
+  document.getElementById("coord-info").innerText = "Transmission stopped.";
+}
+</script>
+
+</body>
+</html>
