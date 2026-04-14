@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Console - Bus Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #1a73e8;
+      padding: 24px 28px 20px;
+      color: white;
+      text-align: center;
+    }
+    .card-header .bus-icon { font-size: 34px; margin-bottom: 6px; }
+    .card-header h2 { font-size: 20px; font-weight: 600; }
+    .card-header p  { font-size: 13px; opacity: 0.82; margin-top: 3px; }
+    .card-body { padding: 24px; }
+
+    .driver-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f0f7ff;
+      border-radius: 10px;
+      padding: 11px 14px;
+      margin-bottom: 18px;
+    }
+    .driver-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; flex-shrink: 0;
+    }
+    .driver-name  { font-size: 14px; font-weight: 600; color: #202124; }
+    .driver-email { font-size: 12px; color: #5f6368; }
+
+    .field-label {
+      font-size: 12px; font-weight: 600; color: #5f6368;
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    select {
+      width: 100%;
+      padding: 13px 40px 13px 14px;
+      border-radius: 10px;
+      border: 1.5px solid #dfe1e5;
+      font-size: 15px;
+      margin-bottom: 18px;
+      outline: none;
+      background: white;
+      color: #202124;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 13px center;
+      transition: border-color 0.2s;
+    }
+    select:focus    { border-color: #1a73e8; }
+    select:disabled { background-color: #f8f9fa; color: #9aa0a6; }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f8f9fa;
+      margin-bottom: 18px;
+    }
+    .pulse-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #bdc1c6;
+      flex-shrink: 0;
+    }
+    .pulse-dot.live { background: #34a853; animation: pulse 1.4s infinite; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.5); opacity: 0.4; }
+    }
+    .status-text { font-size: 14px; font-weight: 600; color: #5f6368; }
+
+    .btn {
+      width: 100%; padding: 15px; border-radius: 12px; border: none;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn:active   { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-start { background: #34a853; color: white; }
+    .btn-stop  {
+      background: white; color: #ea4335;
+      border: 2px solid #ea4335;
+      margin-top: 10px; display: none;
+    }
+
+    .coord-box {
+      background: #f8f9fa; border-radius: 10px;
+      padding: 13px 14px; margin-top: 16px;
+      font-size: 13px; color: #5f6368;
+      line-height: 1.7; text-align: center;
+      min-height: 52px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .coord-box.sending { color: #137333; }
+    .coord-box.error   { color: #c5221f; }
+
+    .accuracy-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; font-size: 12px; color: #5f6368; margin-top: 4px;
+    }
+    .accuracy-pill {
+      padding: 2px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .accuracy-pill.good { background: #e6f4ea; color: #137333; }
+    .accuracy-pill.poor { background: #fce8e6; color: #c5221f; }
+
+    .logout-link {
+      text-align: center; margin-top: 16px;
+      font-size: 13px; color: #5f6368;
+    }
+    .logout-link a { color: #ea4335; cursor: pointer; font-weight: 500; text-decoration: none; }
+
+    #auth-loading {
+      position: fixed; inset: 0;
+      background: #f0f4f8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: #5f6368; z-index: 999;
+    }
+	
+	  .bus-icon {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 6px;
+  }
+
+  .bus-icon img {
+      width: 250px;
+      height: 250px;
+      object-fit: contain;
+  }
+	
+	
+  </style>
+</head>
+<body>
+
+<div id="auth-loading">Checking authentication…</div>
+
+<div class="card" id="main-card" style="display:none;">
+  <div class="card-header">
+  <div class="bus-icon">
+    <img src="bus.png" alt="Bus Icon">
+	</div>
+    <h2>Driver Console</h2>
+    <p>Live Location Transmitter</p>
+  </div>
+  <div class="card-body">
+
+    <div class="driver-info">
+      <div class="driver-avatar" id="driver-avatar">D</div>
+      <div>
+        <div class="driver-name">Bus Driver</div>
+        <div class="driver-email" id="driver-email-display">—</div>
+      </div>
+    </div>
+
+    <div class="field-label">Select Your Bus Route</div>
+    <select id="bus">
+      <option value="Bus1">Bus 01 – Karapakkam</option>
+      <option value="Bus2">Bus 02 – Airport Express</option>
+      <option value="Bus3">Bus 03 – University</option>
+    </select>
+
+    <div class="status-badge">
+      <div id="dot" class="pulse-dot"></div>
+      <span id="status-text" class="status-text">System Offline</span>
+    </div>
+
+    <button id="startBtn" class="btn btn-start" onclick="startTracking()">▶&nbsp; Start Live Transmission</button>
+    <button id="stopBtn"  class="btn btn-stop"  onclick="stopTracking()">⏹&nbsp; Stop Transmission</button>
+
+    <div id="coord-box" class="coord-box">Select your bus and press Start.</div>
+
+    <div class="logout-link"><a onclick="signOut()">Sign out</a></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAhhfTPO4tDvrDrdy9D4Af8c-fHwXiTsGM",
+  authDomain: "bustracker-caecf.firebaseapp.com",
+  databaseURL: "https://bustracker-caecf-default-rtdb.firebaseio.com",
+  projectId: "bustracker-caecf",
+  storageBucket: "bustracker-caecf.firebasestorage.app",
+  messagingSenderId: "559342508116",
+  appId: "1:559342508116:web:d85a945f580c51ea8e75c1"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+let watchId     = null;
+let currentBus  = null;
+let currentUser = null;
+
+// ── Auth Guard ──────────────────────────────────────────────────────────────
+auth.onAuthStateChanged(user => {
+  document.getElementById("auth-loading").style.display = "none";
+  if (!user) { window.location.href = "driver_login.html"; return; }
+
+  currentUser = user;
+  document.getElementById("main-card").style.display = "block";
+  const email = user.email || "";
+  document.getElementById("driver-avatar").textContent = email.charAt(0).toUpperCase();
+  document.getElementById("driver-email-display").textContent = email;
+});
+
+// ── Tracking ────────────────────────────────────────────────────────────────
+function startTracking() {
+  if (!navigator.geolocation) { alert("Geolocation not supported."); return; }
+  currentBus = document.getElementById("bus").value;
+  document.getElementById("bus").disabled = true;
+  document.getElementById("startBtn").disabled = true;
+  setStatus("Acquiring GPS signal…", false);
+
+  watchId = navigator.geolocation.watchPosition(
+    pos => {
+      const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+      db.ref("busdata/" + currentBus).set({
+        lat, lng,
+        status:  "online",
+        updated: new Date().toLocaleTimeString(),
+        driver:  currentUser.email
+      });
+      const good = acc < 50;
+      document.getElementById("coord-box").className = "coord-box sending";
+      document.getElementById("coord-box").innerHTML =
+        `📡 Broadcasting…<br>Lat: <b>${lat.toFixed(5)}</b>&nbsp;|&nbsp;Lng: <b>${lng.toFixed(5)}</b>
+         <div class="accuracy-row">Accuracy: ±${Math.round(acc)} m
+           <span class="accuracy-pill ${good ? "good" : "poor"}">${good ? "GPS Good" : "GPS Weak"}</span>
+         </div>`;
+      setStatus("LIVE — Transmitting", true);
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("stopBtn").style.display  = "block";
+    },
+    err => {
+      document.getElementById("coord-box").className = "coord-box error";
+      document.getElementById("coord-box").textContent = "❌ " + err.message;
+      document.getElementById("bus").disabled = false;
+      document.getElementById("startBtn").disabled = false;
+      setStatus("Location Error", false);
+      if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+function stopTracking() {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+
+  // ✅ KEY FIX: Write offline status to Firebase so student app updates instantly
+  if (currentBus) {
+    db.ref("busdata/" + currentBus).update({
+      status:  "offline",
+      updated: new Date().toLocaleTimeString()
+    });
+  }
+
+  document.getElementById("bus").disabled = false;
+  document.getElementById("startBtn").style.display  = "block";
+  document.getElementById("startBtn").disabled = false;
+  document.getElementById("stopBtn").style.display   = "none";
+  document.getElementById("coord-box").className = "coord-box";
+  document.getElementById("coord-box").textContent = "Transmission stopped. Press Start to resume.";
+  setStatus("System Offline", false);
+}
+
+function setStatus(text, live) {
+  document.getElementById("dot").className = "pulse-dot" + (live ? " live" : "");
+  const s = document.getElementById("status-text");
+  s.textContent = text;
+  s.style.color = live ? "#34a853" : "#5f6368";
+}
+
+function signOut() {
+  if (watchId !== null) stopTracking();
+  auth.signOut().then(() => { window.location.href = "driver_login.html"; });
+}
+
+window.addEventListener("beforeunload", () => {
+  if (currentBus && watchId !== null) {
+    db.ref("busdata/" + currentBus).update({ status: "offline" });
+    navigator.geolocation.clearWatch(watchId);
+  }
+});
+</script>
+</body>
+</html>
