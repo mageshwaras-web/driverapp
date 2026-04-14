@@ -84,7 +84,7 @@ const auth = firebase.auth();
 
 // If already logged in, skip login page
 auth.onAuthStateChanged(user => {
-    if (user) window.location.href = "driverapp_v3.html";
+    if (user) window.location.href = "driverappv3.html";
 });
 
 function login() {
