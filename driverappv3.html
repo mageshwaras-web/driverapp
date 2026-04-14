@@ -234,7 +234,7 @@ let currentUser = null;
 // ── Auth Guard ──────────────────────────────────────────────────────────────
 auth.onAuthStateChanged(user => {
   document.getElementById("auth-loading").style.display = "none";
-  if (!user) { window.location.href = "driver_login.html"; return; }
+  if (!user) { window.location.href = "index.html"; return; }
 
   currentUser = user;
   document.getElementById("main-card").style.display = "block";
@@ -312,7 +312,7 @@ function setStatus(text, live) {
 
 function signOut() {
   if (watchId !== null) stopTracking();
-  auth.signOut().then(() => { window.location.href = "driver_login.html"; });
+  auth.signOut().then(() => { window.location.href = "index.html"; });
 }
 
 window.addEventListener("beforeunload", () => {
